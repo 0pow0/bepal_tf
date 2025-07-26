@@ -114,7 +114,8 @@ class Trainer(object):
             action = select_action(self.args, action_out)
             action, actual = translate_action(self.args, self.env, action)
             
-            node_decoded = node_decoded.view(self.args.nagents, self.args.nagents, (self.args.nagents+2)) # +8+2
+            # node_decoded = node_decoded.view(self.args.nagents, self.args.nagents, (self.args.nagents+2)) # +8+2
+            node_decoded = node_decoded.view(self.args.nagents, self.args.nagents, -1) # +8+2(self.args.nagents+2)
             
             
             node_gt, location = self.ground_truth_gen(self.env.env)
@@ -212,7 +213,7 @@ class Trainer(object):
         deltas = torch.Tensor(batch_size, n)#.cuda()
         advantages = torch.Tensor(batch_size, n)#.cuda()
         values = values.view(batch_size, n)
-        # values_g = values_g.view(batch_size, n,n) # 
+        values_g = values_g.view(batch_size, n,n) # 
 
         prev_coop_return = 0
         prev_ncoop_return = 0
@@ -235,25 +236,25 @@ class Trainer(object):
         node_loc = torch.stack(batch.node_ground_truthg, dim=0)
         
         location = torch.stack(batch.location, dim=0)
-        vector = torch.zeros((rewards.size(0), 1, rewards.size(1), 2))  # [T, 1, N, 2]
+        # vector = torch.zeros((rewards.size(0), 1, rewards.size(1), 2))  # [T, 1, N, 2]
 
         for i in reversed(range(rewards.size(0))):
             advantages[i] = returns[i] - values.data[i]
-            scale_factor = 1  # or dim-1 if you want to normalize
-            if i >= rewards.size(0) - 1:
-                vector[i][0] = location[-1] / scale_factor - location[i] / scale_factor
-            else:
-                contains_zero_row = torch.all(episode_masks[i:i + 1] == episode_masks[-1], dim=1)
-                if contains_zero_row.any():
-                    index = contains_zero_row.nonzero(as_tuple=True)[0][0].item()
-                    vector[i][0] = location[i + index] / scale_factor - location[i] / scale_factor
-                else:
-                    vector[i][0] = location[i + 1] / scale_factor - location[i] / scale_factor
+            # scale_factor = 1  # or dim-1 if you want to normalize
+            # if i >= rewards.size(0) - 1:
+            #     vector[i][0] = location[-1] / scale_factor - location[i] / scale_factor
+            # else:
+            #     contains_zero_row = torch.all(episode_masks[i:i + 1] == episode_masks[-1], dim=1)
+            #     if contains_zero_row.any():
+            #         index = contains_zero_row.nonzero(as_tuple=True)[0][0].item()
+            #         vector[i][0] = location[i + index] / scale_factor - location[i] / scale_factor
+            #     else:
+            #         vector[i][0] = location[i + 1] / scale_factor - location[i] / scale_factor
 
         # vector = vector.repeat(1, n, 1, 1)  # [T, N, N, 2]  v3
-        node_gt = node_loc # torch.cat((node_loc, vector ), dim=3) v3  #[T, N, N, 2 + ...] v4
-        # action_decoded = action_decoded.view(rewards.size(0), 1, rewards.size(1), 1).repeat(1, n, 1, 1)  # [T, N, N, 2] v5
-        # node_gt = torch.cat((node_loc, action_decoded), dim=3) # v5
+        # node_gt = node_loc # torch.cat((node_loc, vector ), dim=3) v3  #[T, N, N, 2 + ...] v4
+        action_decoded = action_decoded.view(rewards.size(0), 1, rewards.size(1), 1).repeat(1, n, 1, 1)  # [T, N, N, 2] v5
+        node_gt = torch.cat((node_loc, action_decoded), dim=3) # v5
 
         Loss_func = nn.MSELoss(reduction='none') #sum
         node_maploss = Loss_func(node_decoded, node_gt.detach())#.sum(dim=[1,2, 3]) /((n+1)*2)
@@ -318,14 +319,14 @@ class Trainer(object):
         value_loss = value_loss.sum()
         # gloable value loss term
         #targets_g = returns.sum(1).view(batch_size,1)
-        # targets_g = returns.unsqueeze(1).repeat(1, n, 1)
+        targets_g = returns.unsqueeze(1).repeat(1, n, 1)
         # # value_loss_g = (values_g/self.args.nagents - targets_g/self.args.nagents).pow(2).view(-1)
-        # value_loss_g = (values_g - targets_g).pow(2).view(-1) # Feb setting
-        # value_loss_g *= alive_masks.repeat(n).view(-1)  #
-        # value_loss_g = value_loss_g.sum()
+        value_loss_g = (values_g - targets_g).pow(2).view(-1) # Feb setting
+        value_loss_g *= alive_masks.repeat(n).view(-1)  #
+        value_loss_g = value_loss_g.sum()
 
         stat['value_loss'] = value_loss.item()
-        # stat['value_loss_g'] = (value_loss_g/self.args.nagents).item() #
+        stat['value_loss_g'] = (value_loss_g/self.args.nagents).item() #
 
         map_loss = (map_loss).sum()  # masked_loss
         stat['map_loss'] = map_loss.item()
