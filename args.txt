@@ -1,0 +1,1 @@
+--env_name traffic_junction --nagents 20 --nprocesses 16 --num_epochs 2000 --hid_size 128 --detach_gap 10 --lrate 0.001 --dim 18 --max_steps 80 --ic3net --vision 1 --recurrent --add_rate_min 0.05 --add_rate_max 0.05 --curr_start 0 --curr_end 0 --difficulty hard
