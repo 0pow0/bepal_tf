@@ -62,7 +62,8 @@ class CommNetMLP(nn.Module):
         self.mapdecode = nn.Sequential(
             nn.Linear(self.args.hid_size, self.args.hid_size),
             # nn.Linear(self.args.hid_size, (self.args.nagents) * (self.args.nagents+2)), # +9 +2 +8  +2  +self.args.nagents+1+1
-            nn.Linear(self.args.hid_size, (self.args.nagents) * (self.args.nagents+3)), # +9 +2 +8  +2  +self.args.nagents+1+1
+            # nn.Linear(self.args.hid_size, (self.args.nagents) * (self.args.nagents+3)), # +9 +2 +8  +2  +self.args.nagents+1+1
+            nn.Linear(self.args.hid_size, (self.args.nagents) * (3)), # +9 +2 +8  +2  +self.args.nagents+1+1
             nn.LeakyReLU()
         )
         # self.route_embed = nn.Embedding(npath+1, 8)  # e.g., (56, 8)

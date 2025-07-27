@@ -60,7 +60,7 @@ class Trainer(object):
         # Concatenate full feature: [loc | ID | route_emb]
         node_gt = torch.cat([locs_norm, id_matrix], dim=1)  # [N, F], route_emb
 
-        return node_gt, locs_norm
+        return node_gt[:, :2], locs_norm
 
 
     def get_episode(self, epoch):
